@@ -47,7 +47,7 @@ The following rules imply that $a \oplus b \oplus a = b$. We'll use this propert
 \subsection{One-time pads}
 This is an encryption scheme that involves a sequence (the `pad') of random bits that is used as the encryption/decryption key. If the bits are truly random and the pad is only used once, the attacker learns nothing about the plaintext when they see the ciphertext. This property is called \textit{perfect security}.
 
-\subsubsection{Reusing the `one-time' pad}
+\subsubsection{Reusing the `one-time' Pad}
 Suppose an attacker gets two ciphertexts that have been encrypted with the same key. The attacker can then XOR the two ciphertexts, which is also the XOR of the plaintexts.
 \begin{center}
 	\begin{tabular}{lcll}
@@ -60,7 +60,7 @@ Suppose an attacker gets two ciphertexts that have been encrypted with the same 
 \end{center}
 To extract either $p1$ or $p2$, you'd need to know the other plaintext. The problem is that even the result of the XOR operation on two plaintexts contains quite a bit of information about the plaintexts themselves.
 
-\subsubsection{Remaining problems}
+\subsubsection{Remaining Problems}
 One-time pads are rarely used due to the fact that the key is at least as large as all of the information you'd like to transmit. You also need to ensure that the keys are exchanged securely ahead of time with all of the people you want to communicate with.
 
 Since the keys have to consist of truly random data for it's security property to hold, key generation is fairly difficult and time-consuming without specialised hardware.
@@ -101,7 +101,7 @@ The round function $f$ typically uses permutations, substitutions and modular ar
 \subsection{Data Encryption Standard (DES)}
 DES was first published in 1977 as a US Federal standard and is a de facto international standard for banking security. it's a feistel block cipher whose block length is 64 bits and key is 56 bits. The sub-keys, $k1, k2...k16$ are each 48-bits and are generated from the main key. The decryption algorithm is exactly the same as the encryption algorithm except that the keys for each round must be used in reverse order.
 
-\subsubsection{DES round function}
+\subsubsection{DES Round Function}
 \begin{enumerate}
 	\item Expansion permutation - Right half is expanded (and permuted) to 48 bits. This diffuses the relationship of input bits to output bits.
 	\item Use of round key - All 48 bits of the round key are XOR-ed with out 48 bits from step 1.
@@ -149,14 +149,14 @@ A single round transformation consists of the following steps:
 \end{itemize}
 Note that in practice, the round key addition step if done before the rounds start, and in the last round, the mix columns step is not performed.
 
-\subsubsection{Byte substitution}
+\subsubsection{Byte Substitution}
 The SubBytes transformation is a simple table lookup. There is only one S-box (substitution box) for the while cipher, a 16x16 matrix of byte values that contains a permutation of all possible 256 8-bit values. Each individual byte of \textbf{state} is mapped into a new byte in the following way:
 \begin{itemize}
 	\item Leftmost 4 bits of the byte are used as a row value; rightmost 4-bits are used as a column value.
 	\item These row and column values serve as indexed into the S-box to select a unique 8-bit output value
 \end{itemize}
 
-\subsubsection{Shift rows}
+\subsubsection{Shift Rows}
 For this step we first put the bytes into a 4x4 grid. The first 4 bytes on the top row, 5-8 on the second etc. The following permutations then occur:
 \begin{itemize}
 	\item 1st row: not altered
@@ -166,10 +166,10 @@ For this step we first put the bytes into a 4x4 grid. The first 4 bytes on the t
 \end{itemize}
 The decryption process uses shifts to the right. This step permutes bytes between the columns.
 
-\subsubsection{Mix columns}
+\subsubsection{Mix Columns}
 Mix columns multiplies each column of the state with a fixed polynomial. Shift rows and mix columns represent the diffusion properties of AES.
 
-\subsubsection{Add round key}
+\subsubsection{Add Round Key}
 In this step, each byte of the state is combined with the round key using XOR i.e. the 128 bits of state are bit-wise XORed with the 128 bits of the round key.
 
 \subsubsection{Pseudocode (AES-128)}
@@ -224,17 +224,17 @@ If a message is longer than its block size, the block cipher can be used in a va
 \end{itemize}
 These modes of operation have been standardised internationally and are applicable to any block ciphers.
 
-\subsubsection{ECB mode}
+\subsubsection{ECB Mode}
 In this mode, each block is encrypted independently using the same key. The last block should be padded if necessary. Usually the last byte indicates the number of padding bytes added; this allows the receiver to remove the padding. The blocks are then encrypted independently of each other. Reordering the ciphertext blocks will result in correspondingly reordered plaintext blocks.
 
-\subsubsection{CBC mode}
+\subsubsection{CBC Mode}
 In this mode the plaintext is divided into blocks and the last block is padded if necessary. Ciphertext block $C_{j}$ depends on plaintext block $M_{j}$ \textbf{and all preceding plaintext blocks}:
 \begin{center}
 	$C_{n} = E_{k}(M_{n} \oplus C_{n-1})$ \\
 	$C_{0} = IV$ (Initialisation vector)
 \end{center}
 
-\subsubsection{CTR mode}
+\subsubsection{CTR Mode}
 A counter, equal to the plaintext block size is used. The counter value must be different for each plaintext block. Typically the counter is initialised to some value, and then incremented by 1 for each subsequent block (modulo $2^{n}$, where $n$ is the block length).
 
 Each block can be decrypted independently of the other, therefore it can be run in parallel and there is also no error propagation.
@@ -343,7 +343,7 @@ To get the plaintext from the ciphertext we use the private key, ${d, n}$:
 	$M = C^{d} \Mod n$
 \end{center}
 
-\subsubsection{Worked example}
+\subsubsection{Worked Example}
 \begin{enumerate}
 	\item Select $p=7$ and $q=17$
 	\item Calculate $n = p \cdot q = 119$
@@ -369,4 +369,106 @@ Due to these issues, we usually combine them to get the strengths of both - this
 	\item Symmetric cipher for bulk encryption.
 \end{itemize}
 The technique is called digital enveloping. A symmetrical algorithm with a random session key is used to encrypt the message and then a public-key algorithm is used to encrypt the random session key.
+
+\section{Cryptographic Checksums}
+Conventional symmetric encryption: $a \rightarrow B: E_{k}[M]$ provides confidentiality, as ONLY $A$ and $B$ share $K$. It also provides a certain degree of origin authentication as it could only come from $A$. It does not provide signature as receiver $B$ could also generate the encryption and sender $A$ could deny sending the message (repudiation of origin).
+
+Public key encryption: $A \rightarrow B: E_{KUb}[M]$ provides confidentiality but not origin authentication as everyone knows $B$s private key.
+
+Digital signing is applied in the following manner:
+\begin{center}
+  $A \rightarrow B: M \| E_{KR_{a}}[h(M)]$
+\end{center}
+Which means that we have the plaintext, $M$, with the encrypted hash value of $M$ attached to the end of it. The encryption is done with $A$s private key. This method provides origin authentication and non-repudiation as:
+\begin{itemize}
+  \item Only $A$ has $KR_{a}$, so signed item must have come from $A$.
+  \item Any party can use $KU_{a}$ to verify the item.
+  \item Provided $KU_{a}$ is trust-worthy, and the signature is dated.
+\end{itemize}
+But it does not provide confidentiality.
+
+Some of the cryptographic operations mentioned above could only provide message authentication and integrity protections provided that the message has some structures or is recognisable. We therefore need some redundancy for the receiver to verify the message - this check-value is a \textbf{cryptographic checksum}.
+
+A cryptographic checksum can be used to protect:
+\begin{itemize}
+  \item Content authentication (origin + integrity)
+  \item Non-repudiation
+  \item Anti-replay
+\end{itemize}
+
+\subsection{Digest Function}
+Given a message, $M$, of arbitrary length, a Message Digest function, $H$, produces a fixed-size output, $h$ (called a message digest, checksum, hash value, or fingerprint, of $M$). $h$ should be a function of all the bits of $M$
+
+\subsubsection{Requirements}
+A message digest function should take into account the following properties:
+\begin{itemize}
+  \item \textbf{Compression}: $H$ can be applied to a block of data of any size, but produces a fixed-length output.
+  \item \textbf{One-way property}: $H(x)$ is easy to compute for any given $x$. For any given $h$, it is hard to compute $x$ such that $H(x) = h$.
+  \item \textbf{Weak collision resistance}: Given $x$, it is hard to find $y \neq x$ such that $H(y) = H(x)$.
+  \item \textbf{Strong collision resistance}: It is hard to find two different messages, $x \neq y$, such that $H(y) = H(x)$.
+\end{itemize}
+If $H$ is strong collision resistant, it is also weak collision resistant.
+
+If the weak collision resistance property is not met signature forgery is likely. Assuming that $A$ has sent a signed message $M$ to $B$, $M \| s$ where $s=R_{KR_{a}}[H(M)]$:
+\begin{enumerate}
+  \item An attacker intercepts $A$'s signature and message.
+  \item The attacker finds another message, $M'$ where $H(M) = H(M')$.
+  \item The attacker now has your signature $s$ on the real message.
+\end{enumerate}
+Repudiation is likely if the strong collision resistance property is not met. Assuming that $A$ is to send a signed message $M$ to $B$:
+\begin{enumerate}
+  \item $A$ chooses two messages $M$ and $M'$ where $H(M) = H(M')$.
+  \item $A$ signs $M$ by generating the signature.
+  \item $A$ sends $B$ $M \| s$.
+  \item Later $A$ repudiates this signature, saying that it was really a signature on the message $M'$.
+\end{enumerate}
+
+\subsection{Construction Methods}
+Cryptographic checksum construction methods include message authentication code (MAC), hash functions and HMAC, among others. Below we take a deeper look into some of these construction methods.
+
+\subsubsection{Extension Method}
+In this method, each MD function processes a block of $M$, the output is the input for the next block. The output of the final block is the digest of the entire message.
+
+\subsubsection{Message Authentication Code (MAC)}
+This is a public function with a shared secret key that produces a fixed-length output i.e. $\text{MAC} = f_{k}(M)$.
+
+It is block cipher based which means that it is slow and produces a short digest length. As before, the output of one block is the input to the next block. At the end we just take the last output value as our digest.
+
+If only $A$ and $B$ know the secret key $K$, and if $\text{MAC} = \text{MAC}'$ (MAC' is the receivers digest), then the receiver can be assured that:
+\begin{itemize}
+  \item The message has not been altered.
+  \item The message is from the alleged sender.
+  \item The message is of the proper sequence if the message includes a sequence number.
+  \item The message is fresh, if the message includes a timestamp.
+\end{itemize}
+
+\subsubsection{Hash Functions}
+Below is a table of commonly used hash functions:
+\begin{center}
+  \begin{tabular}{|l|l|l|l|l|}
+    \hline
+    & SHA-1 & SHA-256 & SHA-384 & SHA-512 \\ \hline
+    Hash value size & 160 & 256 & 384 & 512 \\ \hline
+    Block size & 512 & 512 & 1024 & 1024 \\ \hline
+    Word size & 32 & 32 & 64 & 64 \\ \hline
+    Security & 80 & 128 & 192 & 256 \\
+    \hline
+  \end{tabular}
+\end{center}
+Security refers to the fact that a birthday attack on a message digest of size $n$ produces a collision with a work-factor of approximately $2^{n/2}$.
+
+\subsubsection{HMAC}
+HMAC constructs MAC by applying a message and key to a cryptographic hash function in a nested manner i.e.
+\begin{center}
+  $\text{HMAC}(K, M) = H[(K \oplus \text{opad}) \| H[(K \oplus \text{ipad}) \| M)]]$
+\end{center}
+Where:
+\begin{itemize}
+  \item \textbf{H}: hash function such as SHA-1
+  \item \textbf{ipad}: a string by repeating the byte 0x36 (00110110) as often as necessary.
+  \item \textbf{opad}: a string by repeating the byte 0x5c (01011100) as often as necessary.
+  \item \textbf{K}: 512-bits secret key 
+\end{itemize}
+
+
 \end{document}
