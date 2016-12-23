@@ -467,8 +467,88 @@ Where:
   \item \textbf{H}: hash function such as SHA-1
   \item \textbf{ipad}: a string by repeating the byte 0x36 (00110110) as often as necessary.
   \item \textbf{opad}: a string by repeating the byte 0x5c (01011100) as often as necessary.
-  \item \textbf{K}: 512-bits secret key 
+  \item \textbf{K}: 512-bits secret key
 \end{itemize}
+
+\section{Digital Signature Algorithms}
+A digital signature associates a mark unique to an individual with a body of text. It should be:
+\begin{itemize}
+  \item Message-dependent: unreusable \& ensures integrity
+  \item Signer-dependent: unforgable \& ensures authenticity
+  \item Verifiable: others should be able to verofy that the signature is indeed from the originator.
+\end{itemize}
+A digital signature scheme uses public-key cryptography, typically RSA or DSA.
+
+The main idea is that only $A$ can sign a message because only $A$ has access to their private key. Anyone can verify $A$'s signature because everyone has $A$'s public key. A digital signature scheme consists of a key generation algorithm, a signature generation algorithm and a signature verification algorithm.
+
+\subsection{RSA for Digital Signature - Problems}
+One problem with using RSA for digital signature is that RSA can only handle so much data and we may want to sign a message which is longer than RSA allows. One way to solve this would be to break the message up into smaller chunks but this would add a great deal of complexity and expense.
+
+There is also a security issue:
+\begin{itemize}
+  \item Let $m$ be the message of which you want to forge a signature.
+  \item Choose two messages $x$ and $y$ such that $xy = m \Mod n$.
+  \item If you could obtain the signatures of $x$ and $y$ then you can easily forge a signature of $m$ by $S(m) = S(y)S(x) \Mod n$
+\end{itemize}
+A solution to these problems is to use the `hash-and-sign' paradigm where we sign the hash value of the message. Below is how we write the signature generation process and the signature verification process:
+\begin{center}
+  $S=E_{KR_{a}}[H(M)]$ \\
+  $h=D_{KU_{a}}[S] = D_{KU_{a}}[E_{KU_{a}}[H(M)]]$
+\end{center}
+The remaining problem is how can we ensure that public keys are trustworthy? This is covered in the Public Key Infrastructure topic.
+
+\subsection{DSA}
+Below is an illustration of the workings of the DSA algorithm:
+\begin{center}
+  \includegraphics[scale=0.6]{dsa.jpg}
+\end{center}
+$k$ is a random number generated for this signature (it should be different for every signature generation). $PR_{a}$ is the sender's private key and $PR_{a}$ is the sender's public key.
+
+\subsubsection{Key Generation}
+First we generate our global public-key components that can be shared among a group of users:
+\begin{itemize}
+  \item Choose $p$, a 512-bit to 2048-bit prime number.
+  \item Choose $q$, a 160-bit prime number which divides $(p-1)$ ($q$ is a prime divisor of $p-1$).
+  \item $g = h^{(p-1)/q} \Mod p$ where $h$ is any integer where $1 < h < (p-1)$ such that $h^{(p-1)/q} \Mod p > 1$.
+\end{itemize}
+Next, we choose a long-term private key, $x$, which should be a randomly chosen value in the range $0 < x < q$. Now we can compute our long-term public key:
+\begin{center}
+  $y = g^{x} \Mod p$ \\
+  $KU_{a} = \{p, q, g, y\}$
+\end{center}
+
+\subsubsection{The Signing Process}
+Once we have our public/private key pair, we can move onto the signing stage. First, we choose a random number for $k$. This key must be destroyed after use and must never be reused. We then compute two components:
+\begin{itemize}
+  \item $r = (g^{k} \Mod p) \Mod q$
+  \item $s = [k^{-1}(H(M) + xr)] \Mod q$
+  \item $\text{Signature} = (r, s)$
+\end{itemize}
+We can then send $M \| \text{signature}$ to the receiver.
+
+\subsubsection{Signature Verification}
+So now the receiver has got $KU_{a}$ and $\{M', r', s'\}$. We compute:
+\begin{itemize}
+  \item Message hash $H(M')$
+  \item mod $q$ inverse of $s'$: $w = (s')^{-1} \Mod q$
+  \item $u_{1} = [H(M')w] \Mod q$
+  \item $u_{2} = (r')w \Mod q$
+  \item $v = [(g^{u_{1}}y^{u_{2}}) \Mod p] \Mod q$
+\end{itemize}
+We then test that $v = r'$. If this is true, then the signature is verified.
+
+\subsection{RSA vs DSA}
+\begin{tabular}{|p{6cm}|p{6cm}|}
+  \hline
+  \multicolumn{1}{|c|}{\textbf{RSA}} & \multicolumn{1}{|c|}{\textbf{\textbf{DSA}}} \\ \hline
+  Security is based on difficulty of factoring large numbers & Security is based on difficulty of taking discrete logarithms \\ \hline
+  Can encrypt and sign & Can only sign messages \\ \hline
+  Faster than DSA in signature verification, and about the same in signature generation. & Some signature computation can be computed priori. \\ \hline
+  Can recover the message digest from the signature & Cannot recover the message digest from the signature \\ \hline
+  & Need to choose a unique secret number $k$ for each message \\
+  \hline
+\end{tabular}
+
 
 
 \end{document}
