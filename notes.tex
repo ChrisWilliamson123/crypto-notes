@@ -769,4 +769,44 @@ In this method there is symmetrical key distribution with mutual authentication 
     \hline
   \end{tabular}
 \end{center}
+
+\section{Authentication}
+Some methods for user identification/authentication are:
+\begin{itemize}
+  \item Where you are: location authentication based on IP addresses etc.
+  \item Something you know: passwords, PIN.
+  \item Something you have: keys, smart cards etc.
+  \item Something you are: biometrics, voice recognition.
+\end{itemize}
+These methods combined may be used for a higher level of assurance.
+
+\subsection{Pasword-based Authentication}
+The unix system chooses not to store plaintext passwords, rather it stored encrypted/hashed passwords in the password file. Storing passwords for all the system users plainly visible in a password file is vulnerable to theft and accidental disclosure. THe hashing algorithm is a one-way function, called \texttt{crypt()} that is modified based upon the DES algorithm. It uses salt to make the DES based one-way function different from DES and to make dictionary attacks harder to succeed. The crypt algorithm:
+\begin{itemize}
+  \item Using DES with the first 7 bits of the first 8 characters of password as the key.
+  \item Iterated 25 times on constant string 0s; making the process slower.
+  \item Using salt to perturb the DES algorithm, so that DES chip can not be used to (dictionary) attack the algorithm. It makes precompiled dictionary attacks harder (by a factor of 4096) and it prevents an identical password from producing the same encrypted password.
+  \item The final 64 bits are unpacked into a string of 11 printable characters, called \textit{the encrypted password}
+\end{itemize}
+Most of today's implementations support MD5 in addition to the legacy DES-based \texttt{crypt()} function.
+
+When a user have an account created or they change their password, the \texttt{/bin/password} program:
+\begin{itemize}
+  \item Selects a salt based on the time of day; the DES salt is a 12-bit number, between 0 and 4095, that is converted into a two-character string and is stored in the \texttt{/etc/passwd} file along with the encrypted password.
+  \item The password is used as the encryption key to encrypt a block of zero bits using \texttt{crypt()} to generate the encrypted password.
+\end{itemize}
+When a user tries to log in, the program \texttt{/bin/login} takes the password the user typed, and the salt from the password file, to generate a fresh encrypted password, and compares the newly generated one with the one stored in the \texttt{/etc/passwd} file. If the two encrypted results match, the system lets you in.
+
+In the unix password file, each entry in the file is for one account and has several fields separated by colons, an image of this is below:
+\begin{center}
+  \includegraphics[scale=0.6]{unix-pass.png}
+\end{center}
+\begin{itemize}
+  \item User name (croe)
+  \item Password (14mo31bmRY0Yg): the hashed password preceded by a salt value (14) to be used with the password.
+  \item User ID (UID=12): a number assigned to this user name for system use in identifying the account.
+  \item Group ID (GID=31): a number for the user's group.
+  \item Home directory (/home/croe)
+  \item Shell (/bin/csh): the user's default shell program.
+\end{itemize}
 \end{document}
