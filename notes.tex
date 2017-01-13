@@ -6,6 +6,8 @@
 \usepackage{graphicx}
 \usepackage{color}
 \usepackage{hyperref}
+\usepackage{tikz}
+\def\checkmark{\tikz\fill[scale=0.4](0,.35) -- (.25,0) -- (1,.7) -- (.25,.15) -- cycle;}
 \hypersetup{
     colorlinks,
     citecolor=black,
@@ -149,44 +151,11 @@ A single round transformation consists of the following steps:
 \end{itemize}
 Note that in practice, the round key addition step if done before the rounds start, and in the last round, the mix columns step is not performed.
 
-\subsubsection{Byte Substitution}
-The SubBytes transformation is a simple table lookup. There is only one S-box (substitution box) for the while cipher, a 16x16 matrix of byte values that contains a permutation of all possible 256 8-bit values. Each individual byte of \textbf{state} is mapped into a new byte in the following way:
-\begin{itemize}
-	\item Leftmost 4 bits of the byte are used as a row value; rightmost 4-bits are used as a column value.
-	\item These row and column values serve as indexed into the S-box to select a unique 8-bit output value
-\end{itemize}
+Shift rows and mix columns provide diffusion, that is, changing one bit of the input changes many bits of the output thus achieving the avalanche effect.
 
-\subsubsection{Shift Rows}
-For this step we first put the bytes into a 4x4 grid. The first 4 bytes on the top row, 5-8 on the second etc. The following permutations then occur:
-\begin{itemize}
-	\item 1st row: not altered
-	\item 2nd row: a 1-byte circular left shift
-	\item 3rd row: a 2-byte circular left shift
-	\item 4th row: a 3-byte circular left shift
-\end{itemize}
-The decryption process uses shifts to the right. This step permutes bytes between the columns.
+Byte substitution provides statistical independence as the look-up tables are very non-linear thus good at destroying patterns.
 
-\subsubsection{Mix Columns}
-Mix columns multiplies each column of the state with a fixed polynomial. Shift rows and mix columns represent the diffusion properties of AES.
-
-\subsubsection{Add Round Key}
-In this step, each byte of the state is combined with the round key using XOR i.e. the 128 bits of state are bit-wise XORed with the 128 bits of the round key.
-
-\subsubsection{Pseudocode (AES-128)}
-\begin{lstlisting}
-addRoundKey(S, K[0]);
-
-for (i = 1; i <=9; i++) {
-    subBytes(S);
-    shiftRows(S);
-    mixColumns(S);
-    addRoundKey(S, K[i]);
-}
-
-subBytes(S);
-shiftRows(S);
-addRoundKey(S, K[10]);
-\end{lstlisting}
+Round key addition provides completeness as the whole key is used to derive the round keys and the whole input is used for encryption.
 
 \subsection{DES vs AES}
 \begin{center}
@@ -475,11 +444,28 @@ A digital signature associates a mark unique to an individual with a body of tex
 \begin{itemize}
   \item Message-dependent: unreusable \& ensures integrity
   \item Signer-dependent: unforgable \& ensures authenticity
-  \item Verifiable: others should be able to verofy that the signature is indeed from the originator.
+  \item Verifiable: others should be able to verify that the signature is indeed from the originator.
 \end{itemize}
 A digital signature scheme uses public-key cryptography, typically RSA or DSA.
 
 The main idea is that only $A$ can sign a message because only $A$ has access to their private key. Anyone can verify $A$'s signature because everyone has $A$'s public key. A digital signature scheme consists of a key generation algorithm, a signature generation algorithm and a signature verification algorithm.
+
+\subsection{RSA Signature Generation}
+In this scenario, Alice wants to send Bob a signed message so that Bob knows that it is Alice who has sent the message.
+
+Alice has a public and private key: $KU_{a} = \{e, n\}$ and $KR_{a} = \{d, n\}$. Bob also has access to Alice's public key.
+
+Alice generates a signature in the following way:
+\begin{center}
+  $S = M^{d} \Mod n$
+\end{center}
+She then attached this to her message and sends to Bob: $A \rightarrow B: M\|S$.
+
+Bob receives the message: $M'\|S$. And works out M:
+\begin{center}
+  $M = S^{e} \Mod n$
+\end{center}
+If $M$ matches $M'$, the signature is valid and Bob can be sure that Alice sent the message.
 
 \subsection{RSA for Digital Signature - Problems}
 One problem with using RSA for digital signature is that RSA can only handle so much data and we may want to sign a message which is longer than RSA allows. One way to solve this would be to break the message up into smaller chunks but this would add a great deal of complexity and expense.
@@ -550,7 +536,7 @@ We then test that $v = r'$. If this is true, then the signature is verified.
 \end{tabular}
 
 \section{Public Key Infrastructure}
-The major problem with wide-scale application of public-key cryptography is howcan we trust that a given public key belongs to the claimed entity? The solution is to have someone or some authority to sign one's public key (a digital certificate). A digital certificate is a statement certifying that this public key belongs to this identity and the owner with this identity possesses the corresponding private key.
+The major problem with wide-scale application of public-key cryptography is how can we trust that a given public key belongs to the claimed entity? The solution is to have someone or some authority to sign one's public key (a digital certificate). A digital certificate is a statement certifying that this public key belongs to this identity and the owner with this identity possesses the corresponding private key.
 
 \subsection{Two Trust Models}
 SPKI (Simple PKI) is a bottom-up approach:
@@ -572,7 +558,7 @@ Below is a diagram showing the connections between PKI entities:
 
 \subsection{Main Functions}
 \subsubsection{SystemSetup}
-A credential service provider should get the policy, prodedures and services ready, including key generation/update, certificates issuance, distribution and revocation, possibly key recovery, and potential interaction with other providers.
+A credential service provider should get the policy, procedures and services ready, including key generation/update, certificates issuance, distribution and revocation, possibly key recovery, and potential interaction with other providers.
 \subsubsection{SubjectRegistration}
 During this process, a subject makes itself known to a CA.
 \subsubsection{KeyGeneration}
@@ -623,7 +609,7 @@ A certificate has a validity period but what if a private key corresponding to a
 
 Certificate revocation lists is a mechanism to let the world know that a certificate is no longer valid. It is a black list of revoked certificates. A CRL is a data structure, digitally signed by the issuing CA, containing:
 \begin{itemize}
-  \item Dateand time of the CRL publication
+  \item Date and time of the CRL publication
   \item Name of the issuing CA
   \item Serial numbers of all the revoked certificates.
 \end{itemize}
@@ -642,13 +628,20 @@ The certificate hierarchy starts with a root CA with a root cert/key. They creat
 
 The CA hierarchy would look something like this:
 \begin{center}
-  \includegraphics[scale=0.]{CA-hierarchy.png}
+  \includegraphics[scale=0.6]{CA-hierarchy.png}
 \end{center}
-For certificate chain validation we verify that all the digital signatures are signed by all subordinate CAs in a bottom up manner until you rech the root CA's signature, or until you reach a subordinate CA that you can trust. So, for Alice's certificate chain:
+For certificate chain validation we verify that all the digital signatures are signed by all subordinate CAs in a bottom up manner until you reach the root CA's signature, or until you reach a subordinate CA that you can trust. So, for Alice's certificate chain:
 \begin{center}
   $\{\text{CERT}_{\text{Alice}}\}S_{\text{DeptQ}} + \{\text{CERT}_{\text{DeptQ}}\}S_{\text{1stCorp}} + \{\text{CERT}_{\text{1stCorp}}\}S_{\text{RootCA}}$
 \end{center}
 If Bob wishes to authenticate a message signed by Alice, he can proceed `up' the certificate chain until he finds a certificate he can trust.
+
+\subsubsection{Cross Certification}
+Cross certification is about expanding trust. If you trust both CA1 and CA2, and a certificate is signed by both, you've got a very high level of trust because two separate entities have verified the certificate.
+
+It has the added bonus of increasing the ease of verification of trust, such as situation were you've got clients that trust CA1 or CA2 but not both. In such a case, you can cross-sign a certificate to be trusted by both. This allows more clients to verify trust without having to distribute separate certificates for different CAs.
+
+Another bonus is in situations where a CA's private key is leaked. Let's say that CA1's key leaks and your certificate is signed by CA1 and CA2. In the wake of the leak, CA1 issue a revokation for it's public key and you can no longer trust anything issued by CA1. However, since your certificate is cross-signed to CA2 as well, any client that trusts CA2 can still maintain a level of trust in your certificate.
 
 \section{Key Management}
 Key management is the hardest part of cryptography. How can we generate them so that the can not be easily guessed? How can we securely store keys so that they can not be easily stolen? How could keys be delivered to their intended recipients securely? How could two entities agree on, or establish, a key securely and how are keys revoked and replace?
@@ -675,17 +668,17 @@ Below is a table which shows the number of possible keys given various constrain
 \end{center}
 
 \subsection{Key Generation}
-Good keys are random numbers, a sequence of numbers where an observer can not predict one of the numbers given all of the others in the sequence. Oridinary random number generation functions e.g. \texttt{java.util.Random}, may not be good enough for this. A reliable random source, or a cryptographically secure pseudo-random number generator, e.g. \texttt{SecureRandom} class in \texttt{java.security} package should be used.
+Good keys are random numbers, a sequence of numbers where an observer can not predict one of the numbers given all of the others in the sequence. Ordinary random number generation functions e.g. \texttt{java.util.Random}, may not be good enough for this. A reliable random source, or a cryptographically secure pseudo-random number generator, e.g. \texttt{SecureRandom} class in \texttt{java.security} package should be used.
 
 Some pseudo-random numbers are generated from a strong mixing function that takes two or more inputs that have some randomness (e.g. CPU load, arrival times of network packets), but produces an output bit of which depends on some nonlinear function of all the bits of the inputs. Cryptographic hashing functions and encryption algorithms (e.g. MD5, SHA and DES) are all examples of the strong mixing function.
 
 \subsection{Key Storage}
-You must protect the key to the same degree as all the data it encrypts. Attackers may defeat access control mechanisms, so you should encryt the file containing the key. Ideally, a key should never appear unencrypted outside the encryption device.
+You must protect the key to the same degree as all the data it encrypts. Attackers may defeat access control mechanisms, so you should encrypt the file containing the key. Ideally, a key should never appear unencrypted outside the encryption device.
 
 The key may be resident in memory, so attackers may be able to read it if they could get access to the machine. Therefore, you can use a physical token to store the key such as a smart card, and protect the token with a PIN number. The card could be stolen so therefore you can split they key into two halves and store one half on the card and the other in the machine.
 
 \subsection{Session Key Establishment}
-The more often a symmetric key is used, the more likely it is to be cracked. Therefore we should generate and use a symmetric key for one session only. It is desirable to use diferent session keys in different sessions as this can:
+The more often a symmetric key is used, the more likely it is to be cracked. Therefore we should generate and use a symmetric key for one session only. It is desirable to use different session keys in different sessions as this can:
 \begin{itemize}
   \item Limit available ciphertexts for cyptanalysis
   \item Limit exposure (both in time period and amount of data) in an event of key compromise
@@ -695,7 +688,7 @@ To establish a session key, one way it to use a key agreement protocol. A shared
 
 Another way is to use key transportation protocols. If we're not using a public-key cipher session keys are generated and distributed with the help of a third party (Needham-Schroeder protocol). If we're using a public-key cipher one party creates a session key and securely transfers it to the other party using the recipients public key.
 
-With this being said, there are other issues that sould be considered. \\
+With this being said, there are other issues that should be considered. \\
 \textbf{Entity and key authentication:}
 \begin{itemize}
   \item Assurance: no other party could gain access to the established session key.
@@ -704,7 +697,7 @@ With this being said, there are other issues that sould be considered. \\
 \textbf{Key freshness:} assurance that the key is fresh i.e. not used before.
 
 \subsection{Diffie-Hellman Protocol}
-BH was the first public-key algorithm ever invented back in 1976. The DH key exchange protocol allows two parties who have never met before to echange protocol messages in public and collectively generate a key that is private to them, and none of the parties could predetermine the key.
+BH was the first public-key algorithm ever invented back in 1976. The DH key exchange protocol allows two parties who have never met before to exchange protocol messages in public and collectively generate a key that is private to them, and none of the parties could predetermine the key.
 
 Its security is based on the difficulty of calculating discrete logarithms in a finite field:
 \begin{itemize}
@@ -712,11 +705,11 @@ Its security is based on the difficulty of calculating discrete logarithms in a 
   \item Solutions known for small $n$.
   \item Solutions computationally infeasible as $n$ grows large.
 \end{itemize}
-Assuming that two parties, Alice and Bob, take part in the exchange. They agree on two large integers, $g$ and $n$. $n$ is a prime number that serves as the modulus and $g$ is a ranodm number that serves as the basis with $1 < g < n$. $g$ and $n$ do not have to be secret. Alice has a private key $X_{a}$ and a public key $Y_{a}$ and so does Bob, $X_{b}$ and $Y_{b}$. The image below shows how the algorithm works:
+Assuming that two parties, Alice and Bob, take part in the exchange. They agree on two large integers, $g$ and $n$. $n$ is a prime number that serves as the modulus and $g$ is a random number that serves as the basis with $1 < g < n$. $g$ and $n$ do not have to be secret. Alice has a private key $X_{a}$ and a public key $Y_{a}$ and so does Bob, $X_{b}$ and $Y_{b}$. The image below shows how the algorithm works:
 \begin{center}
   \includegraphics[scale=0.3]{dh.png}
 \end{center}
-This resists passive attacks such as eavesdropper as caluclating a discrete logarithm is a computationally hard problem. There is one problem though. Neither party knows who it shares the secret with so it is vulnerable to active man-in-the-middle attacks.
+This resists passive attacks such as eavesdropper as calculating a discrete logarithm is a computationally hard problem. There is one problem though. Neither party knows who it shares the secret with so it is vulnerable to active man-in-the-middle attacks.
 
 \subsection{Distribution Without Use of PKC}
 \textbf{Approach one:} Given $n$ users, we provide $n(n-1)/2$ keys. The problem with this is that as $n$ increases, the number of keys needed becomes untenable for everyone, the $n^{2}$ problem.
@@ -780,12 +773,12 @@ Some methods for user identification/authentication are:
 \end{itemize}
 These methods combined may be used for a higher level of assurance.
 
-\subsection{Pasword-based Authentication}
-The unix system chooses not to store plaintext passwords, rather it stored encrypted/hashed passwords in the password file. Storing passwords for all the system users plainly visible in a password file is vulnerable to theft and accidental disclosure. THe hashing algorithm is a one-way function, called \texttt{crypt()} that is modified based upon the DES algorithm. It uses salt to make the DES based one-way function different from DES and to make dictionary attacks harder to succeed. The crypt algorithm:
+\subsection{Password-based Authentication}
+The UNIX system chooses not to store plaintext passwords, rather it stored encrypted/hashed passwords in the password file. Storing passwords for all the system users plainly visible in a password file is vulnerable to theft and accidental disclosure. The hashing algorithm is a one-way function, called \texttt{crypt()} that is modified based upon the DES algorithm. It uses salt to make the DES based one-way function different from DES and to make dictionary attacks harder to succeed. The crypt algorithm:
 \begin{itemize}
   \item Using DES with the first 7 bits of the first 8 characters of password as the key.
   \item Iterated 25 times on constant string 0s; making the process slower.
-  \item Using salt to perturb the DES algorithm, so that DES chip can not be used to (dictionary) attack the algorithm. It makes precompiled dictionary attacks harder (by a factor of 4096) and it prevents an identical password from producing the same encrypted password.
+  \item Using salt to perturb the DES algorithm, so that DES chip can not be used to (dictionary) attack the algorithm. It makes pre-compiled dictionary attacks harder (by a factor of 4096) and it prevents an identical password from producing the same encrypted password.
   \item The final 64 bits are unpacked into a string of 11 printable characters, called \textit{the encrypted password}
 \end{itemize}
 Most of today's implementations support MD5 in addition to the legacy DES-based \texttt{crypt()} function.
@@ -797,7 +790,7 @@ When a user have an account created or they change their password, the \texttt{/
 \end{itemize}
 When a user tries to log in, the program \texttt{/bin/login} takes the password the user typed, and the salt from the password file, to generate a fresh encrypted password, and compares the newly generated one with the one stored in the \texttt{/etc/passwd} file. If the two encrypted results match, the system lets you in.
 
-In the unix password file, each entry in the file is for one account and has several fields separated by colons, an image of this is below:
+In the UNIX password file, each entry in the file is for one account and has several fields separated by colons, an image of this is below:
 \begin{center}
   \includegraphics[scale=0.6]{unix-pass.png}
 \end{center}
@@ -809,4 +802,330 @@ In the unix password file, each entry in the file is for one account and has sev
   \item Home directory (/home/croe)
   \item Shell (/bin/csh): the user's default shell program.
 \end{itemize}
+This design causes a problem though. \texttt{/etc/passwd} needs to be accessed by processes, so the solution above would allow anyone to copy the file and to crack the passwords at his/her leisure. The countermeasure to this is the a shadow password file, \texttt{/etc/shadow} is used which stores the real passwords and is put in an area accessible only to the root account.
+
+Another problem is that an attacker can eavesdrop on a network to get your login ID and encrypted password and later replay it to gain access to the network - the replay attack. In order to perform this attack the attacker needs to:
+\begin{itemize}
+  \item Modify the client/logon software so that it does not encrypt the encrypted password but rather replay it directly.
+  \item Eavesdrop on the network
+\end{itemize}
+Usually we assume that the LAN is secure and you do not bring your own client software in so we tend to overlook this problem in a LAN environment.
+
+\subsubsection{One-Time Passwords}
+These are passwords that can only be used once that therefore thwart sniffing and replay attacks. Below are some approaches to one-time passwords:
+\begin{itemize}
+  \item random number based OTP.
+  \item Clock-based OTP (need token). The clock has to be reliable and secure. The clocks between the entities must be synchronised.
+  \item Counter-based OTP (need token).
+  \item If a hard token is used, then the token should be locked with a PIN or password.
+\end{itemize}
+
+\subsection{CHAP (Challenge-Handshake Authentication Protocol)}
+The CHAP authenticates a user or network host to an authenticating entity for example an ISP, VPN server, wireless access point etc.
+
+CHAP provides protection against replay attacks by the peer through the use of an incrementally changing identifier and of a variable challenge value. CHAP requires that both the client and server know the plaintext of the secret, although it is never sent over the network. Thus, CHAP provides better security as compared to Password Authentication Protocol which is vulnerable for both these reasons.
+\begin{enumerate}
+  \item After completion of the link establishment phase, the authenticator sends a challenge message to the peer.
+  \item The peer responds with a value calculated using a one-way hash function on the challenge and the secret combined.
+  \item The authenticator checks the response against its own calculation of the expected hash value. If the values match, the authenticator acknowledges the authentication; otherwise it should terminate the connection.
+  \item At random intervals the authenticator sends a new challenge to the peer and repeats steps 1 through 3.
+\end{enumerate}
+\begin{center}
+  \includegraphics[scale=0.6]{chap.png}
+\end{center}
+
+\subsection{PIN protected OTP}
+This method uses a PIN to unlock a token, i.e. when a PIN is entered, the token compares the PIN typed in against an internal copy. If positive, the token will compute the OTP using the reading from the clock or counter embedded in the token + the base secret. If repeated PIN entries are wrong, the token takes steps to resist a PIN guessing attack.
+
+\subsection{Smart-card-based Authentication}
+A smart-card is an authentication token that a person carries around with them. Some advantages are:
+\begin{itemize}
+  \item Unlike memory cards, they can do more than just containing some secret information; they can perform simple crypto operations.
+  \item Support mobility, can `memorise' your secret, and can provide two factor authentication.
+\end{itemize}
+And some disadvantages:
+\begin{itemize}
+  \item Smart-cards require a special hardware reader on every access device, which may be expensive and requires standardisation.
+  \item They are subject to theft, so used in conjunction with some other authentication mechanisms such as PIN/password.
+\end{itemize}
+
+\subsection{Challenge-Response Using PKC}
+The previous protocol requires a shared symmetric key; what if you have not already established that trust relationship? We authenticate using public key technique with a nonce.
+\begin{center}
+  \includegraphics[scale=0.7]{crpkc.png}
+\end{center}
+The security hole here is a man-in-the-middle attack:
+\begin{center}
+  \includegraphics[scale=0.5]{crpkc-mitm.png}
+\end{center}
+
+\subsection{X.509 Certificate-based Authentication Service}
+X.509 defines a framework - a system to enable the validation of, and to give legal meaning to, digital signatures (which require the use of hash functions). It allows mutual authentication using public-key technology - digital signatures are digital certificates. It doesn't dictate the use of a specific public-key cryptographic algorithm, but recommends RSA, nor does it define a specific hash algorithm. It's used in S/MIME, IP Security, SSL/TLS and SET. Below is an image showing the authentication process:
+\begin{center}
+  \includegraphics[scale=0.5]{x509-auth.png}
+\end{center}
+As only $B$ can decrypt the random number (nonce), $r_{1}$, correctly, message (2) authenticates $B$ to $A$. Message (3) authenticates $A$ to $B$. Three messages are needed for mutual authentication between two parties. This is called challenge-response authentication method.
+
+\subsubsection{X.509 - Authentication Using Digital Signatures}
+\begin{center}
+  \includegraphics[scale=0.5]{x509-auth-sig.png}
+\end{center}
+As only $B$ can generate the rightful signature, message (2) authenticates $B$ to $A$. Message (3) authenticates $A$ to $B$. This is also called challenge-response authentication method.
+
+\subsection{Enterprise authentication}
+We have seen what it's like for single systems as shown earlier but what about when we have more systems and more passwords? For this we can use central authentication for a number of systems in an organisation. We let one authority (usually called a security server) at an organisation/site manage your passwords instead of each computer having its own. By this, we can enforce organisation wide security policies, including authentication, authorisation and accounting (i.e. the AAA services). A number of systems exist such as Radius and Kerberos.
+
+The security server is responsible for providing AAA services to edge devices such as VPN servers and wireless access points.
+
+\subsubsection{RADIUS}
+The image below is an overview of how the RADIUS authentication system works:
+\begin{center}
+  \includegraphics[scale=0.5]{radius-overview.png}
+\end{center}
+The next is how simple user authentication and authorisation works with RADIUS:
+\begin{center}
+  \includegraphics[scale=0.5]{radius-user-auth.png}
+\end{center}
+And finally how challenge-response authentication and authorisation works using RADIUS:
+\begin{center}
+  \includegraphics[scale=0.5]{radius-cr-auth.png}
+\end{center}
+In general the RADIUS protocol works in the following way:
+\begin{itemize}
+  \item The client forwards the user access request to a RADIUS server.
+  \item Server replies with reject access or allow access based on a user supplied password/credential.
+  \item Server challenges when challenge-response protocol is used.
+  \item If challenge-response is used, client forwards challenge to the user and the user sends their response to the client and then the client onto the server.
+  \item One RADIUS server may act as a client to another RADIUS server for consultation.
+\end{itemize}
+
+\section{Virtual Private Networks}
+A VPN is a security solution, making use of tunnelling, encryption, authentication, and access control technologies to allow you to achieve private communication over public networks such as the Internet.
+
+Tunneling includes \textbf{encapsulation}, \textbf{transmission} and \textbf{decapsulation}; encapsulation is to wrap data with a header that provides routing information allowing it to transmit across the Internet to reach its destination so as to emulate a dedicated point-to-point link. For example, in IP-in-IP encapsulation, IP packets are encapsulated in another IP packet.
+
+VPN routers (or VPN gateways) are located at the corporate network perimeter; they perform tunneling, authentication and data encryption/decryption. They can be categorised as \textbf{standalone} or \textbf{integrated}:\\
+\textbf{Standalone}: VPNs incorporate purpose-built devices.\\
+\textbf{Integrated}: Implementations add VPN functionality to existing devices such as routers, firewalls:
+\begin{itemize}
+  \item Router based VPNs add encryption support to existing routers and can keep the upgrade costs of VPN low.
+  \item Firewall based VPNs are a workable solution for small networks with low traffic volume.
+\end{itemize}
+A VPN client is:
+\begin{itemize}
+  \item Software used for remote VPN access.
+  \item Creates a secure path from the remote client computer to a VPN gateway.
+  \item Can be loaded onto an individual computer requesting remote access \textbf{or} a router that establishes a peer-to-peer VPN connection.
+\end{itemize}
+During tunnel setup, the devices on each side of the tunnel agree on the details of authentication and encryption.
+\begin{itemize}
+  \item Authentication is for identifying VPN users and devices and for ensuring the authenticity of data.
+  \item Encryption is for protecting the confidentiality of data while in transit across the Internet.
+\end{itemize}
+Below is a table showing different VPN types:
+\begin{center}
+  \begin{tabular}{|p{2.5cm}|p{3cm}|p{2.5cm}|p{3cm}|}
+    \hline
+    Types & Applications & Alternatives & Benefits \\ \hline
+    Remote access VPN & Remote connectivity & Dedicated dial ISDN & Ubiquitous access, lower cost \\ \hline
+    Intranet VPN & Site-to-site, internal connectivity & Leased line & Extended connectivity, lower cost \\ \hline
+    Extranet VPN & B2B, external connectivity & Fax, snail post & Facilitates eTransaction and eCommerce \\
+    \hline
+  \end{tabular}
+\end{center}
+We need VPNs to protect us against security risks on the internet such as:
+\begin{itemize}
+  \item Loss of privacy (packet sniffing).
+  \item Loss of data integrity - data can be modified maliciously or accidentally.
+  \item Identity spoofing.
+  \item Denial of Service attacks.
+\end{itemize}
+There are multiple ways of implementing a VPN. PPTP is based upon PPP (point-to-point protocol). L2TP 9Layer 2 tunnelling protocol) is an extension or enhanced version of PPTP; often used together with IPSec and then there is just normal IPSec. Although IPSec has become the de facto standard for LAN-WAN-LAN VPNs, PPTP and L2TP are heavily used for single client to LAN connections. Therefore, many VPN products support IPSec, PPTP and L2TP.
+
+\section{IPSec}
+IPSec operates at the IP layer. It provides security protection:
+\begin{itemize}
+  \item For the transport layer, including all TCP and UDP, traffic.
+  \item For all other traffic carried in the data field of the IP packet e.g. ICMP messages.
+  \item Also for IP packets (IPv4 and IPv6) when using tunnel mode.
+\end{itemize}
+This protection is transparent, i.e. there is no need to modify applications or transport-layer protocols to work with IPSec, and can be applied to all the application-level programs.
+
+\subsection{Security Association (SA) And Session Keys}
+A security association refers to a set of attributes negotiated between two end-points for the protection of IP traffic for the SA. Some of the attributes are:
+\begin{itemize}
+  \item Authentication mechanism e.g. HMAC
+  \item Encryption algorithm e.g. DES
+  \item Algorithm mode e.g. CBC
+  \item A shared session key
+  \item Initialisation vector
+\end{itemize}
+This system is unidirectional, so for two-way secure exchange two SAs are needed. An SA is uniquely identified by:
+\begin{itemize}
+  \item A random 32-bit value SPI (secure parameter index)
+  \item Destination IP address
+  \item An identifier of the security protocol (AH or ESP)
+\end{itemize}
+Session key establishment can either be managed manually or automatically. If you choose to establish them manually you have to manually configure the keying material and SA data for each system. This is practical in small, static environments an does not scale well.
+
+For automated key management there is ISAKMP (Internet SA Key Management Protocol) which defines procedures and packet formats to establish, negotiate, modify and delete SA. There is also the IKE (Internet Key Exchange) which provides facilities to negotiate and derive keying material for establishing a session key:
+\begin{itemize}
+  \item DH-DSA: using Diffie-Hellman key agreement for deriving key material between peers on a public network, and DSA to sign the DH exchanges to counter the man-in-the-middle attack.
+  \item Public key cryptography: using recipients public key for secure session key transportation.
+\end{itemize}
+Below is a diagram which illustrates the process of establishing an SA and session key:
+\begin{center}
+  \includegraphics[scale=0.6]{sa-sk-establishment.png}
+\end{center}
+
+\subsection{Authentication Methods}
+ISAKMP/IKE supports multiple \textbf{authentication} methods. Scheme one in symmetric key cryptography:
+\begin{itemize}
+  \item The same key is pre-installed on each host.
+  \item The peers authenticate each other by computing and sending a keyed hash of data that includes the pre-shared keys.
+\end{itemize}
+The second is public key cryptography:
+\begin{itemize}
+  \item Each party generates a pseudo-random number (nonce) and encrypts it and its ID using the other party's public key.
+  \item The ability to decrypt the data with the local private key authenticates the parties to each other.
+  \item The method requires the ability to generate random numbers, and perform public-key encryption/decryption.
+  \item It does not provide non-repudiation.
+  \item Currently only RSA is supported.
+\end{itemize}
+The third is digital signature:
+\begin{itemize}
+  \item Each device signs some data contributed by the other entity.
+  \item This method is similar to scheme two, except that it provides non-repudiation.
+  \item Both RSA and DSS are supported.
+\end{itemize}
+Once SA(s) is negotiated and session key established, packets are forwarded using traffic protocols, AH and/or ESP.
+
+IPSec (AH and ESP) may be employed in one of the two ways. \textbf{Transport} and \textbf{tunnel} modes (or a combination of them).
+
+\subsection{Transport Mode}
+Transport mode is only applicable to host implementations and it protects the IP payload (the data). The payload is encapsulated by the IPSec headers and trailers. The original IP headers remain intact, except that the IP protocol field is changed to ESP or AH, and the original protocol value is save is the IPSec trailer to be restores when the packer is decrypted.
+
+Transport mode is usually used when another tunneling protocol is used to first encapsulate the IP data packet, then IPSec is used to protect the tunnel packets.
+
+The packet diagram below illustrates IPSec transport mode with ESP header
+\begin{center}
+  \includegraphics[scale=0.6]{ipsec-transport.png}
+\end{center}
+
+The packet diagram below illustrates IPSec transport mode with AH header
+\begin{center}
+  \includegraphics[scale=0.6]{ipsec-transport-ah.png}
+\end{center}
+
+\subsection{Tunnel Mode}
+Tunnel mode is employed in either hosts or security gateways; the entire original IP datagram is protected (it becomes the payload in a new IP packet). It allows a network device to act as an IPSec proxy performing IPSec processing on behalf of the hosts. This method protects against traffic analysis.
+
+In tunnel mode, an IPSec header is inserted between the IP header and the upper layer protocol. Between AH and ESP, ESP is most commonly used in IPSec VPN tunnel configuration.
+
+The packet diagram below illustrates IPSec tunnel mode with ESP header.
+\begin{center}
+  \includegraphics[scale=0.6]{ipsec-tunnel.png}
+\end{center}
+
+The packet diagram below illustrates IPSec tunnel mode with AH header.
+\begin{center}
+  \includegraphics[scale=0.6]{ipsec-tunnel-ah.png}
+\end{center}
+
+\subsection{Combining SAs}
+Multiple SAs may be combined into an SA bundle. An SA can only implement either AH or ESP, so in cases such as the following, one may combine more than one SA into a bundle:
+\begin{itemize}
+  \item To have both services and/or.
+  \item Different flows in one communication path requires different services.
+\end{itemize}
+SAs can be combined into bundles in the following two ways:
+\begin{itemize}
+  \item \textbf{Transport Adjacency} - This refers to applying more than once security protocol to the same IP packet without invoking tunneling. This approach to combining AH and ESP allows for only one level of combination; further nesting yields no added benefit since the processing is performed at one IPsec instance: the ultimate destination.
+  \item \textbf{Iterated tunneling} - This refers to the application of multiple layers of security protocols effected through IP tunneling. This approach allows for multiple levels of nesting, since each tunnel can originate or terminate at a different IPsec site along the path.
+\end{itemize}
+
+\subsection{Traffic Security Protocols}
+Each of the IPSec traffic protocols defines a new set of headers to be added to IP datagrams. \textbf{Authentication Header (AH)} provides data origin authentication, data integrity and anti-replay but does not provide confidentiality protection.
+
+\textbf{Encapsulating Security Payload (ESP)} provides:
+\begin{itemize}
+  \item Confidentiality protection (encryption)
+  \item Partial traffic flow confidentiality
+  \item data origin authentication, data integrity, anti-replay
+\end{itemize}
+ESP uses keyed-hash function, HMAC, for data integrity and authentication protection. It uses bulk encryption algorithms such as 3-key triple DES, AES, IDEA, CAST, Blowfish and RC5, for confidentiality protection.
+
+\subsubsection{Authentication Header Format}
+\begin{center}
+  \includegraphics[scale=0.6]{ah-format.png}
+\end{center}
+\begin{itemize}
+  \item NextHeader - specifies the type of header immediately following the Authentication Header.
+  \item PayloadLength - The length of AH in 4-byte units.
+  \item Reserves - not used now (set to 0)
+  \item SPI - identifies a SA
+  \item SequenceNumber - contains a monotonically increasing counter to protect against replay.
+  \item AuthenticationData - contains the message authentication code (MAC) for this packet (typically 96 bits long)
+\end{itemize}
+The default MAC algorithm is HMAC built on a keyed one-way hash function. It is truncated to the first 96 bits and stored in the AH AuthenticationData field. The following rules are applied to IP Headers (transport mode) and new IP headers (tunnel mode) when computing the MAC:
+\begin{itemize}
+  \item Mutable IP header fields, e.g. TOS, flags, fragment offset, TTL and header checksum are zeroes prior to MAC calculation. All other immutable fields are included.
+  \item The AH AuthenticationData field is zeroes. All other AH header fields are included.
+  \item The entire upper-level protocol data are included.
+\end{itemize}
+Regarding integrity \& authentication. The following is done for an outbound packet (from the sender):
+\begin{itemize}
+  \item SA lookup
+  \item Sequence number generation
+  \item MAC calculation
+\end{itemize}
+And for the receiver:
+\begin{itemize}
+  \item Re-assemble (if IP packet has been fragmented)
+  \item SA lookup
+  \item Sequence number verification
+  \item MAC verification
+\end{itemize}
+To prevent anti-replay the sequence number field is used. For a new SA, the sequence number is initialised as 1 for the first packet and increased by one for each outgoing packet up to $2^{32}-1$. If this limit is reached, then a new SA with a new key should be negotiated.
+
+A window size, $W$, specifies the number of out-of-order packets that are tracked. The right edge of the window shows the highest sequence number, $N$, of the packet received so far. For packets with sequence numbers in the range from $N-W+1$ to $N$: if MAC is correct, then mark it, otherwise drop it. If a received packet is to the right of the window and is correctly authenticated, mark the packet and advance the window. If a received packet is to the left of the window, drop the packet:
+\begin{center}
+  \includegraphics[scale=0.6]{ah-anti-replay.png}
+\end{center}
+
+\subsubsection{Encapsulating Security Payload Format}
+\begin{center}
+  \includegraphics[scale=0.6]{esp-format.png}
+\end{center}
+Things here are similar to AH format. PayloadData is a transport level segment e.g. TCP segment (transport mode) or IP packet (tunnel mode) that is protected by encryption.
+
+For outgoing packets first we have an SA lookup, then we have packet encryption:
+\begin{itemize}
+  \item Encapsulate relevant data into the ESP payload field.
+  \item Add any necessary padding.
+  \item Encrypts the result (PayloadData, Padding, PadLength, and NextHeader) using the key and the encryption algorithm  indicated by the SA.
+\end{itemize}
+Next we have sequence number generation and MAC calculation (if authentication is selected by the SA).
+
+For inbound packets we perform re-assembly, SA lookup, sequence verification, MAC verification and packet decryption which involves:
+\begin{itemize}
+  \item Decrypt the relevant data.
+  \item Process any padding as specifies in the encryption algorithm specification.
+  \item Reconstructs the original IP datagram.
+\end{itemize}
+
+\subsubsection{Summary Table}
+\begin{center}
+  \begin{tabular}{|l|l|l|l|}
+      \hline
+      & AH & ESP & ESP with authentication \\ \hline
+      Access control & \checkmark & \checkmark & \checkmark \\ \hline
+      Connectionless integrity & \checkmark & & \checkmark \\ \hline
+      Data origin authentication & \checkmark & & \checkmark \\ \hline
+      Rejection of replayed attacks & \checkmark & & \checkmark \\ \hline
+      Confidentiality & & \checkmark & \checkmark \\ \hline
+      Limited traffic flow confidentiality & & \checkmark & \checkmark \\
+      \hline
+  \end{tabular}
+\end{center}
 \end{document}
